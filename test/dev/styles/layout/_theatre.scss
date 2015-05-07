@@ -1,0 +1,117 @@
+.theatre {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: $color-gray-dark;
+  color: $color-light;
+  transform: translateX(100%);
+  transition: 
+    background-color 300ms ease-out,
+    transform 1s cubic-bezier(0, .7, .5, 1) 200ms;
+
+  &.is-open {
+    transform: translateX(0);
+  }
+
+  .js & {
+    position: fixed;
+    top: 155px;
+    right: 0;
+    bottom: 0;
+    left: 5rem;
+    z-index: 2;
+  }
+}
+.theatre__content {
+  margin-bottom: 9rem;
+  padding: 2rem 3rem 0;
+  overflow: auto;
+}
+
+.theatre__title {
+  position: absolute;
+  top: 2.4rem;
+  left: 0;
+  padding: .6em 1em;
+  margin: 0;
+  background-color: $color-main;
+  transform: translateX(-100%) rotate(-90deg);
+  transform-origin: 100% 100%;
+  z-index: 2;
+  cursor: pointer;
+
+  .is-open & {
+    background-color: $color-gray-dark;
+  }
+}
+
+.theatre__moment {
+  margin: 0 0 .8rem;
+  color: $color-gray-medium;
+}
+
+.theatre__list {
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+}
+
+.theatre__item {
+  padding: .8rem 0 .8rem 5.5rem;
+  border-top: 1px solid transparentize($color-gray-medium, .8);
+  color: $color-gray-medium;
+}
+
+.theatre__date,
+.theatre__item time {
+  color: $color-main;
+}
+
+.theatre__location {
+  display: block;
+  color: $color-light;
+}
+
+.theatre__more {
+  display: block;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border: 1px solid transparentize($color-gray-medium, .8);
+  border-width: 1px 0;
+  color: $color-light;
+  text-align: center;
+}
+
+.theatre__buy {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 2.2rem 0;
+  background-color: darken($color-gray-dark, 5%);
+  text-align: center;
+  z-index: 2;
+
+  a {
+    display: inline-block;
+    padding: .5rem 2rem;
+    border: 1px solid $color-main;
+    color: $color-main;
+    border-radius: 999em;
+  }
+}
+
+.theatre-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, .9);
+  z-index: 1;
+  display: none;
+
+  .is-open + & {
+    // opacity: 1;
+  }
+}

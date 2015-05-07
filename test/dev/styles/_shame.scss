@@ -1,0 +1,25 @@
+body:after {
+  // content: '';
+  position: absolute;
+  z-index: 999;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 100%;
+  height: 2236px;
+  background: #0f0 url('../images/mobile.jpg') no-repeat;
+  background-image: url('../images/mobile-open.jpg');
+  background-size: 320px 2236px;
+  opacity: .5;
+}
+
+// body {
+//   overflow: hidden;
+// }
+
+nav,
+.movie__genre__item,
+.movie__info,
+.more {
+  background: #0f0;
+}

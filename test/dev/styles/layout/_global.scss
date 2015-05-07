@@ -1,0 +1,18 @@
+body {
+  background: $color-light;
+  color: $color-dark;
+
+  &.is-sticky {
+    overflow: hidden;
+  }
+}
+
+a {
+  color: $color-dark;
+  text-decoration: none;
+}
+
+nav {
+  position: absolute;
+  top: 2rem;
+}
