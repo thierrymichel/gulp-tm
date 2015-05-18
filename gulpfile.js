@@ -7,6 +7,7 @@
 
 var gulp = require('gulp');
 var autoprefixer = require('gulp-autoprefixer');
+var cache = require('gulp-cached');
 var changed = require('gulp-changed');
 var concat = require('gulp-concat');
 var deleted = require('gulp-deleted');
@@ -165,6 +166,32 @@ gulp.task('scripts', function () {
     }));
 });
 
+// images optimisation (only changed)
+gulp.task('images', function () {
+  return gulp
+    .src(pathPrefixer(paths.images.files, paths.dev))
+    .pipe(gulpif(
+      config.env === 'dev',
+      cache('images'),
+      changed(paths.build + paths.images.src, {hasChanged: changed.compareSha1Digest})
+    ))
+    // .pipe(cache('images'))
+    // .pipe(changed(paths.build))
+    // .pipe(changed(paths.build + paths.images.src, {hasChanged: changed.compareSha1Digest}))
+    .pipe(imagemin())
+    .pipe(gulpif(
+      config.env === 'dev',
+      gulp.dest(paths.dev + paths.images.src),
+      gulp.dest(paths.build + paths.images.src)
+    ))
+    // .pipe(gulp.dest(paths.build + paths.images.src))
+    .pipe(notify({
+      onLast: true,
+      message: 'IMAGES task SUCCESS!',
+      icon: null
+    }));
+});
+
 // livereload for “static” files (.html, .php, .jade, …)
 gulp.task('static', function () {
   livereload.reload();
@@ -175,6 +202,7 @@ gulp.task('watch', function () {
   livereload.listen();
   gulp.watch(pathPrefixer(paths.styles.files, paths.dev), ['styles']);
   gulp.watch(pathPrefixer(paths.scripts.files, paths.dev), ['scripts']);
+  gulp.watch(pathPrefixer(paths.images.files, paths.dev), ['images']);
   gulp.watch(pathPrefixer(paths.static.files, paths.dev), ['static']);
 });
 
@@ -198,26 +226,12 @@ gulp.task('init-build', function () {
 gulp.task('copy', ['init-build'], function () {
   return gulp
     .src(pathPrefixer(paths.site, paths.dev))
-    .pipe(deleted(paths.dev, paths.build, paths.site))
-    .pipe(changed(paths.build))
+    .pipe(deleted(paths.dev, paths.build, pathPrefixer(paths.site, paths.dev)))
+    .pipe(changed(paths.build, {hasChanged: changed.compareSha1Digest}))
     .pipe(gulp.dest(paths.build))
     .pipe(notify({
       onLast: true,
       message: 'COPY task SUCCESS!',
-      icon: null
-    }));
-});
-
-// images optimisation (only changed)
-gulp.task('images', function () {
-  return gulp
-    .src(pathPrefixer(paths.images.files, paths.dev))
-    .pipe(changed(paths.build))
-    .pipe(imagemin())
-    .pipe(gulp.dest(paths.build + paths.images.src))
-    .pipe(notify({
-      onLast: true,
-      message: 'IMAGES task SUCCESS!',
       icon: null
     }));
 });
