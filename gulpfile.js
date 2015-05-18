@@ -1,4 +1,4 @@
-/*jslint indent: 2 */
+/*jslint indent: 2, nomen: true, regexp: true */
 "use strict";
 
 /*
@@ -25,6 +25,7 @@ var uglify = require('gulp-uglify');
 var del = require('del');
 var notifier = require('node-notifier');
 var path = require('path');
+var _ = require('underscore');
 
 /*
  * Settings
@@ -35,12 +36,12 @@ var paths = {
   build: 'htdocs/',
   index: 'index.+(html|php)',
   site: [
-    'dev/**/*',
-    'dev/.htaccess',
-    '!dev/styles{,/**}',        // specific task!
-    '!dev/scripts/*',           // specific task!
-    '!dev/scripts/lib{,/**}',   // specific task!
-    '!dev/images{,/**}'         // specific task!
+    '**/*',
+    '.htaccess',
+    '!styles{,/**}',        // specific task!
+    '!scripts/*',           // specific task!
+    '!scripts/lib{,/**}',   // specific task!
+    '!images{,/**}'         // specific task!
   ],
   styles: {
     src: 'styles/',
@@ -51,8 +52,11 @@ var paths = {
   scripts: {
     src: 'scripts/',
     main: 'scripts/main.js',
-    files: 'scripts/**/*.js',
-    concat: ['dev/scripts/main.js', 'dev/scripts/lib/qux.js'],
+    files: [
+      'scripts/**/*.js',
+      '!scripts/**/*.min.js'
+    ],
+    concat: ['scripts/main.js', 'scripts/lib/qux.js'],
     dest: 'scripts/main.min.js'
   },
   images: {
@@ -69,6 +73,18 @@ var config = {
 
 
 /*
+ * Utils
+ */
+
+function pathPrefixer(path, base) {
+  // preserve !negation for excluded files
+  var re = /^(.+)(!)(.+)$/;
+  if (typeof path === 'string') {
+    return (base + path).replace(re, '$2$1$3');
+  }
+  return _.map(path, function (item) { return (base + item).replace(re, '$2$1$3'); });
+}
+/*
  * Tasks
  */
 
@@ -83,7 +99,7 @@ gulp.task('default', ['styles', 'scripts', 'watch'], function () {
 
 // stylesheets : sass + sourcemaps + autoprefixer + pixrem + livereload
 gulp.task('styles', function () {
-  return sass(paths.dev + paths.styles.main, { sourcemap: true, style: 'compressed'})
+  return sass(pathPrefixer(paths.styles.main, paths.dev), { sourcemap: true, style: 'compressed'})
     .pipe(plumber())
     .pipe(autoprefixer({
       browsers: ['last 2 versions', '> 5%', 'ie >= 8', 'Firefox ESR'],
@@ -118,7 +134,7 @@ gulp.task('styles', function () {
 
 // scripts concat + uglify + sourcemaps
 gulp.task('scripts', function () {
-  return gulp.src(paths.scripts.concat)
+  return gulp.src(pathPrefixer(paths.scripts.concat, paths.dev))
     .pipe(plumber())
     .pipe(sourcemaps.init())
     .pipe(concat('main.js'))
@@ -157,9 +173,9 @@ gulp.task('static', function () {
 // livereload is listening to you…
 gulp.task('watch', function () {
   livereload.listen();
-  gulp.watch(paths.dev + paths.styles.files, ['styles']);
-  gulp.watch(paths.dev + paths.scripts.files, ['scripts']);
-  gulp.watch(paths.dev + paths.static.files, ['static']);
+  gulp.watch(pathPrefixer(paths.styles.files, paths.dev), ['styles']);
+  gulp.watch(pathPrefixer(paths.scripts.files, paths.dev), ['scripts']);
+  gulp.watch(pathPrefixer(paths.static.files, paths.dev), ['static']);
 });
 
 // BUILD task
@@ -181,7 +197,7 @@ gulp.task('init-build', function () {
 // copy (all) changed files except styles/scripts/images + .htaccess + remove deleted files
 gulp.task('copy', ['init-build'], function () {
   return gulp
-    .src(paths.site)
+    .src(pathPrefixer(paths.site, paths.dev))
     .pipe(deleted(paths.dev, paths.build, paths.site))
     .pipe(changed(paths.build))
     .pipe(gulp.dest(paths.build))
@@ -195,7 +211,7 @@ gulp.task('copy', ['init-build'], function () {
 // images optimisation (only changed)
 gulp.task('images', function () {
   return gulp
-    .src(paths.dev + paths.images.files)
+    .src(pathPrefixer(paths.images.files, paths.dev))
     .pipe(changed(paths.build))
     .pipe(imagemin())
     .pipe(gulp.dest(paths.build + paths.images.src))
