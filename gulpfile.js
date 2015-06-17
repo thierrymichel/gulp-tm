@@ -241,3 +241,5 @@ gulp.task('rev', function () {
 gulp.task('rev-clean', ['rev'], function (cb) {
   del([paths.build + paths.styles.dest, paths.build + paths.scripts.dest], cb);
 });
+
+// modif to test submodule usage…
