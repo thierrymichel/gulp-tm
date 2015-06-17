@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, regexp: true */
-"use strict";
+'use strict';
+
 
 /*
  * Load modules / packages
@@ -27,6 +28,7 @@ var del = require('del');
 var notifier = require('node-notifier');
 var path = require('path');
 var _ = require('underscore');
+
 
 /*
  * Settings
@@ -72,11 +74,11 @@ var config = {
   env: 'dev'
 };
 
-
 /*
  * Utils
  */
 
+// Path(s) concatenation: @base (string) + @path (string or array)
 function pathPrefixer(path, base) {
   // preserve !negation for excluded files
   var re = /^(.+)(!)(.+)$/;
@@ -85,6 +87,8 @@ function pathPrefixer(path, base) {
   }
   return _.map(path, function (item) { return (base + item).replace(re, '$2$1$3'); });
 }
+
+
 /*
  * Tasks
  */
@@ -98,7 +102,7 @@ gulp.task('default', ['styles', 'scripts', 'watch'], function () {
   });
 });
 
-// stylesheets : sass + sourcemaps + autoprefixer + pixrem + livereload
+// stylesheets: sass + autoprefixer + pixrem + livereload + sourcemaps (only in dev mode)
 gulp.task('styles', function () {
   return sass(pathPrefixer(paths.styles.main, paths.dev), { sourcemap: true, style: 'compressed'})
     .pipe(plumber())
@@ -106,20 +110,14 @@ gulp.task('styles', function () {
       browsers: ['last 2 versions', '> 5%', 'ie >= 8', 'Firefox ESR'],
       cascade: false
     }))
-    .pipe(pixrem('18px'))
+    // .pipe(pixrem('18px'))
     .pipe(rename({
       suffix: ".min"
     }))
-    // .pipe(sourcemaps.write('./', {
-    //   includeContent: false
-    // }))
     .pipe(gulpif(
       config.env === 'dev',
-      sourcemaps.write('./', {
-        includeContent: false
-      })
+      sourcemaps.write('./')
     ))
-    // .pipe(gulp.dest(paths.dev + paths.styles.src))
     .pipe(gulpif(
       config.env === 'dev',
       gulp.dest(paths.dev + paths.styles.src),
@@ -133,7 +131,7 @@ gulp.task('styles', function () {
     }));
 });
 
-// scripts concat + uglify + sourcemaps
+// scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
 gulp.task('scripts', function () {
   return gulp.src(pathPrefixer(paths.scripts.concat, paths.dev))
     .pipe(plumber())
@@ -143,16 +141,10 @@ gulp.task('scripts', function () {
     .pipe(rename({
       suffix: ".min"
     }))
-    // .pipe(sourcemaps.write('./', {
-    //   includeContent: false
-    // }))
     .pipe(gulpif(
       config.env === 'dev',
-      sourcemaps.write('./', {
-        includeContent: false
-      })
+      sourcemaps.write('./')
     ))
-    // .pipe(gulp.dest(paths.dev + paths.scripts.src))
     .pipe(gulpif(
       config.env === 'dev',
       gulp.dest(paths.dev + paths.scripts.src),
@@ -166,7 +158,9 @@ gulp.task('scripts', function () {
     }));
 });
 
-// images optimisation (only changed)
+// images optimisation
+// dev mode: only changed images (via cache)
+// build mode: only changed images (via SHA comparison)
 gulp.task('images', function () {
   return gulp
     .src(pathPrefixer(paths.images.files, paths.dev))
@@ -175,16 +169,12 @@ gulp.task('images', function () {
       cache('images'),
       changed(paths.build + paths.images.src, {hasChanged: changed.compareSha1Digest})
     ))
-    // .pipe(cache('images'))
-    // .pipe(changed(paths.build))
-    // .pipe(changed(paths.build + paths.images.src, {hasChanged: changed.compareSha1Digest}))
     .pipe(imagemin())
     .pipe(gulpif(
       config.env === 'dev',
       gulp.dest(paths.dev + paths.images.src),
       gulp.dest(paths.build + paths.images.src)
     ))
-    // .pipe(gulp.dest(paths.build + paths.images.src))
     .pipe(notify({
       onLast: true,
       message: 'IMAGES task SUCCESS!',
@@ -205,6 +195,7 @@ gulp.task('watch', function () {
   gulp.watch(pathPrefixer(paths.images.files, paths.dev), ['images']);
   gulp.watch(pathPrefixer(paths.static.files, paths.dev), ['static']);
 });
+
 
 // BUILD task
 // gulp.task('build', ['init-build', 'copy', 'scripts', 'styles', 'images', 'revision-clean', 'revision-write', 'revision-refs'], function () {
