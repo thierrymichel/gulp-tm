@@ -39,11 +39,14 @@ var _ = require('underscore');
  * Settings
  */
 
-var paths = {
-  dev: 'dev/',
-  build: 'htdocs/',
-  index: 'index.+(html|php)',
-  site: [
+var config = {
+  env: 'dev' // vs 'build'
+};
+
+// src, dest, directories, files, paths, globs, …
+var devDir = 'dev/',
+  buildDir = 'htdocs/',
+  siteFiles = [
     '**/*',
     '.htaccess',
     '!styles{,/**}',        // specific task!
@@ -51,34 +54,22 @@ var paths = {
     '!scripts/lib{,/**}',   // specific task!
     '!images{,/**}'         // specific task!
   ],
-  styles: {
-    src: 'styles/',
-    main: 'styles/main.scss',
-    files: 'styles/**/*.scss',
-    dest: 'styles/main.min.css'
-  },
-  scripts: {
-    src: 'scripts/',
-    main: 'scripts/main.js',
-    files: [
-      'scripts/*.js',
-      'scripts/lib/*.js',
-      '!scripts/**/*.min.js'
-    ],
-    concat: ['scripts/main.js', 'scripts/lib/qux.js'],
-    dest: 'scripts/main.min.js'
-  },
-  images: {
-    src: 'images/',
-    files: 'images/**/*'
-  },
-  static: {
-    files: '**/*.+(html|php|jade)'
-  }
-};
-var config = {
-  env: 'dev'
-};
+  staticFiles = '**/*.+(html|php|jade)',
+  imagesDir = 'images/',
+  imagesFiles = 'images/**/*',
+  scriptsDir = 'scripts/',
+  scriptsFiles = [
+    'scripts/*.js',
+    'scripts/lib/*.js',
+    '!scripts/**/*.min.js'
+  ],
+  scriptsConcat = [
+    'scripts/lib/baz.js',
+    'scripts/lib/qux.js'
+  ],
+  stylesDir = 'styles/',
+  stylesFiles = 'styles/**/*.scss',
+  mainFile = 'main';
 
 
 /* ------------------------------------------------------
@@ -117,7 +108,10 @@ gulp.task('default', ['styles', 'modernizr', 'scripts', 'watch'], function () {
  * sass + autoprefixer + pixrem + livereload + sourcemaps (only in dev mode)
  */
 gulp.task('styles', function () {
-  return sass(pathPrefixer(paths.styles.main, paths.dev), { sourcemap: true, style: 'compressed'})
+
+  var src = devDir + stylesDir + mainFile + '.scss';
+
+  return sass(src, { sourcemap: true, style: 'compressed' })
     .pipe(plumber())
     .pipe(autoprefixer({
       browsers: ['last 2 versions', '> 5%', 'ie >= 8', 'Firefox ESR'],
@@ -133,8 +127,8 @@ gulp.task('styles', function () {
     ))
     .pipe(gulpif(
       config.env === 'dev',
-      gulp.dest(paths.dev + paths.styles.src),
-      gulp.dest(paths.build + paths.styles.src)
+      gulp.dest(devDir + stylesDir),
+      gulp.dest(buildDir + stylesDir)
     ))
     .pipe(livereload())
     .pipe(notify({
@@ -151,7 +145,10 @@ gulp.task('styles', function () {
  * crawls through source files, gathers up references to Modernizr tests and outputs a lean, mean Modernizr machine…
  */
 gulp.task('modernizr', function () {
-  return gulp.src(pathPrefixer(paths.scripts.files, paths.dev))
+
+  var src = pathPrefixer(scriptsFiles, devDir);
+
+  return gulp.src(src)
     .pipe(modernizr('custom.modernizr.js', {
       options: [
         'setClasses',
@@ -165,7 +162,17 @@ gulp.task('modernizr', function () {
     .pipe(rename({
       suffix: ".min"
     }))
-    .pipe(gulp.dest(paths.dev + paths.scripts.src + 'vendor/'));
+    .pipe(gulpif(
+      config.env === 'dev',
+      gulp.dest(devDir + scriptsDir + 'vendor/'),
+      gulp.dest(buildDir + scriptsDir + 'vendor/')
+    ))
+    .pipe(livereload())
+    .pipe(notify({
+      onLast: true,
+      message: 'MODERNIZR task SUCCESS!',
+      icon: null
+    }));
 });
 
 
@@ -174,7 +181,12 @@ gulp.task('modernizr', function () {
  * scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
  */
 gulp.task('scripts', function () {
-  return gulp.src(pathPrefixer(paths.scripts.concat, paths.dev))
+
+  var srcMain = scriptsDir + mainFile + '.js',
+    srcConcat = scriptsConcat.concat(srcMain),
+    src = pathPrefixer(srcConcat, devDir);
+
+  return gulp.src(src)
     .pipe(plumber())
     .pipe(sourcemaps.init())
     .pipe(concat('main.js'))
@@ -188,8 +200,8 @@ gulp.task('scripts', function () {
     ))
     .pipe(gulpif(
       config.env === 'dev',
-      gulp.dest(paths.dev + paths.scripts.src),
-      gulp.dest(paths.build + paths.scripts.src)
+      gulp.dest(devDir + scriptsDir),
+      gulp.dest(buildDir + scriptsDir)
     ))
     .pipe(livereload())
     .pipe(notify({
@@ -207,18 +219,21 @@ gulp.task('scripts', function () {
  * build mode: only changed images (via SHA comparison)
  */
 gulp.task('images', function () {
+
+  var src = devDir + imagesFiles;
+
   return gulp
-    .src(pathPrefixer(paths.images.files, paths.dev))
+    .src(src)
     .pipe(gulpif(
       config.env === 'dev',
       cache('images'),
-      changed(paths.build + paths.images.src, {hasChanged: changed.compareSha1Digest})
+      changed(buildDir + imagesDir, {hasChanged: changed.compareSha1Digest})
     ))
     .pipe(imagemin())
     .pipe(gulpif(
       config.env === 'dev',
-      gulp.dest(paths.dev + paths.images.src),
-      gulp.dest(paths.build + paths.images.src)
+      gulp.dest(devDir + imagesDir),
+      gulp.dest(buildDir + imagesDir)
     ))
     .pipe(notify({
       onLast: true,
@@ -243,10 +258,10 @@ gulp.task('static', function () {
  */
 gulp.task('watch', function () {
   livereload.listen();
-  gulp.watch(pathPrefixer(paths.styles.files, paths.dev), ['styles']);
-  gulp.watch(pathPrefixer(paths.scripts.files, paths.dev), ['scripts', 'modernizr']);
-  gulp.watch(pathPrefixer(paths.images.files, paths.dev), ['images']);
-  gulp.watch(pathPrefixer(paths.static.files, paths.dev), ['static']);
+  gulp.watch(pathPrefixer(stylesFiles, devDir), ['styles']);
+  gulp.watch(pathPrefixer(scriptsFiles, devDir), ['scripts', 'modernizr']);
+  gulp.watch(pathPrefixer(imagesFiles, devDir), ['images']);
+  gulp.watch(pathPrefixer(staticFiles, devDir), ['static']);
 });
 
 
@@ -262,7 +277,11 @@ gulp.task('build', ['init-build', 'modernizr', 'copy', 'styles', 'scripts', 'ima
   });
 });
 
-// set build config
+
+/*
+ * INIT_BUILD task
+ * set build config
+ */
 gulp.task('init-build', function () {
   config.env = 'build';
   console.time('BUILD TIME');
@@ -274,17 +293,21 @@ gulp.task('init-build', function () {
  * copy (all) changed files except styles/scripts/images + .htaccess + remove deleted files
  */
 gulp.task('copy', ['init-build', 'modernizr'], function () {
+
+  var src = pathPrefixer(siteFiles, devDir);
+
   return gulp
-    .src(pathPrefixer(paths.site, paths.dev))
-    .pipe(deleted(paths.dev, paths.build, pathPrefixer(paths.site, paths.dev)))
-    .pipe(changed(paths.build, {hasChanged: changed.compareSha1Digest}))
-    .pipe(gulp.dest(paths.build))
+    .src(src)
+    .pipe(deleted(devDir, buildDir, pathPrefixer(siteFiles, devDir)))
+    .pipe(changed(buildDir, {hasChanged: changed.compareSha1Digest}))
+    .pipe(gulp.dest(buildDir))
     .pipe(notify({
       onLast: true,
       message: 'COPY task SUCCESS!',
       icon: null
     }));
 });
+
 
 // revision control for styles and scripts
 gulp.task('rev', function () {
@@ -327,6 +350,11 @@ gulp.task('bower', ['bower-jquery', 'bower-sass'], function () {
   });
 });
 
+
+/*
+ * BOWER-JQUERY
+ * copy and minify jQuery from 'bower' to 'vendor' folder
+ */
 gulp.task('bower-jquery', function () {
   return gulp.src(mainBowerFiles({
     filter: /jquery/
@@ -335,19 +363,27 @@ gulp.task('bower-jquery', function () {
     .pipe(rename({
       suffix: ".min"
     }))
-    .pipe(gulp.dest(paths.dev + paths.scripts.src + 'vendor/'));
+    .pipe(gulp.dest(devDir + scriptsDir + 'vendor/'));
 });
 
+
+/*
+ * BOWER-SASS
+ * copy Sass libs from 'bower' to 'vendor/lib' folder
+ */
 gulp.task('bower-sass', function () {
   // get all main Sass files from bower packages
   var mainBowerSassFiles = mainBowerFiles({
     filter: /.\.scss/
   }),
-    vendorFolder = process.cwd() + '/' + paths.dev + paths.styles.src + 'vendor/';
+    vendorFolder = process.cwd() + '/' + devDir + stylesDir + 'vendor/';
 
+  /*jslint stupid: true*/
   if (!fs.exists(vendorFolder)) {
     fs.mkdirSync(vendorFolder);
   }
+  /*jslint stupid: false*/
+
   _.each(mainBowerSassFiles, function (file) {
     // copy
     // from: bower_components/**/srcFolder/_[filename].scss
