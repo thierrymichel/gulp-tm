@@ -303,16 +303,16 @@ gulp.task('rev-clean', ['rev'], function (cb) {
 
 
 /* ------------------------------------------------------
- * YEOMAN tasks
+ * INIT / YEOMAN / BOWER tasks
  */
 
 /*
- * YO task (init)
+ * INIT task
  */
-gulp.task('yo', ['bower-jquery', 'bower-sass'], function () {
+gulp.task('init', ['bower-jquery', 'bower-sass'], function () {
   notifier.notify({
     title: 'Gulp notification',
-    message: 'YO task SUCCESS!'
+    message: 'INIT task SUCCESS!'
   });
 });
 
