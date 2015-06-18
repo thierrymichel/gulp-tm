@@ -271,7 +271,7 @@ gulp.task('watch', function () {
  * BUILD task
  */
 // gulp.task('build', ['init-build', 'copy', 'scripts', 'styles', 'images', 'revision-clean', 'revision-write', 'revision-refs'], function () {
-gulp.task('build', ['init-build', 'modernizr', 'copy', 'styles', 'scripts', 'images', 'rev', 'rev-replace', 'rev-clean'], function () {
+gulp.task('build', ['init-build', 'copy', 'modernizr', 'styles', 'scripts', 'images', 'rev', 'rev-replace', 'rev-clean'], function () {
   console.timeEnd('BUILD TIME');
   notifier.notify({
     title: 'Gulp notification',
@@ -294,7 +294,7 @@ gulp.task('init-build', function () {
  * COPY task
  * copy (all) changed files except styles/scripts/images + .htaccess + remove deleted files
  */
-gulp.task('copy', ['init-build', 'modernizr'], function () {
+gulp.task('copy', ['init-build'], function () {
 
   var src = pathPrefixer(siteFiles, devDir);
 
@@ -332,7 +332,7 @@ gulp.task('rev', ['styles', 'scripts'], function () {
 
 /*
  * REV-REPLACE
- * rewrite occurences of main scripts/styles (after revision) 
+ * rewrite occurences of main scripts/styles (after revision)
  */
 gulp.task('rev-replace', ['rev'], function () {
 
