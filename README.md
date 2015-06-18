@@ -29,6 +29,8 @@ $ gulp build
 + Add revision for images
 + Add HTML minifcation
 
+-----
+
 ## Contributing
 
 Feel free to comment or open an issue/PR.
