@@ -1,7 +1,7 @@
 {
   "name": "gulp-tm",
   "version": "0.0.1",
-  "description": "Dev process for styles (sass, autoprefixer, pixrem, sourcemaps), scripts (concat, uglify, sourcemaps), images (imagemin) with livereload + build process",
+  "description": "Dev process for styles (sass, autoprefixer, pixrem, sourcemaps), scripts (concat, uglify, sourcemaps), images (imagemin) with livereload + build process + yo/bower init",
   "author": {
     "name": "Thierry Michel",
     "email": "hello@thierrymichel.net",
@@ -16,9 +16,11 @@
     "gulp-changed": "^1.2.1",
     "gulp-concat": "^2.5.2",
     "gulp-deleted": "https://github.com/thierrymichel/gulp-deleted/tarball/e739a38767bba379324dff7c45d6ec975aa96642",
+    "gulp-foreach": "^0.1.0",
     "gulp-if": "^1.2.5",
     "gulp-imagemin": "^2.2.1",
     "gulp-livereload": "^3.8.0",
+    "gulp-modernizr": "^1.0.0-alpha",
     "gulp-notify": "^2.2.0",
     "gulp-pixrem": "^0.2.3",
     "gulp-plumber": "^1.0.0",
@@ -27,6 +29,8 @@
     "gulp-ruby-sass": "^1.0.5",
     "gulp-sourcemaps": "^1.5.2",
     "gulp-uglify": "^1.2.0",
+    "main-bower-files": "^2.8.0",
+    "ncp": "^2.0.0",
     "node-notifier": "^4.2.1",
     "underscore": "^1.8.3"
   }

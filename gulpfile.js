@@ -2,7 +2,7 @@
 'use strict';
 
 
-/*
+/* ------------------------------------------------------
  * Load modules / packages
  */
 
@@ -12,9 +12,12 @@ var cache = require('gulp-cached');
 var changed = require('gulp-changed');
 var concat = require('gulp-concat');
 var deleted = require('gulp-deleted');
+var foreach = require('gulp-foreach');
 var gulpif = require('gulp-if');
 var imagemin = require('gulp-imagemin');
 var livereload = require('gulp-livereload');
+var mainBowerFiles = require('main-bower-files');
+var modernizr = require('gulp-modernizr');
 var notify = require('gulp-notify');
 var pixrem = require('gulp-pixrem');
 var plumber = require('gulp-plumber');
@@ -25,12 +28,14 @@ var sourcemaps = require('gulp-sourcemaps');
 var uglify = require('gulp-uglify');
 
 var del = require('del');
+var fs = require('fs');
+var ncp = require('ncp').ncp;
 var notifier = require('node-notifier');
 var path = require('path');
 var _ = require('underscore');
 
 
-/*
+/* ------------------------------------------------------
  * Settings
  */
 
@@ -56,7 +61,8 @@ var paths = {
     src: 'scripts/',
     main: 'scripts/main.js',
     files: [
-      'scripts/**/*.js',
+      'scripts/*.js',
+      'scripts/lib/*.js',
       '!scripts/**/*.min.js'
     ],
     concat: ['scripts/main.js', 'scripts/lib/qux.js'],
@@ -74,7 +80,8 @@ var config = {
   env: 'dev'
 };
 
-/*
+
+/* ------------------------------------------------------
  * Utils
  */
 
@@ -89,12 +96,14 @@ function pathPrefixer(path, base) {
 }
 
 
-/*
+/* ------------------------------------------------------
  * Tasks
  */
 
-// DEFAULT task -> DEV
-gulp.task('default', ['styles', 'scripts', 'watch'], function () {
+/*
+ * DEFAULT task -> DEV
+ */
+gulp.task('default', ['styles', 'modernizr', 'scripts', 'watch'], function () {
   console.log('gulp default');
   notifier.notify({
     title: 'Gulp notification',
@@ -102,7 +111,11 @@ gulp.task('default', ['styles', 'scripts', 'watch'], function () {
   });
 });
 
-// stylesheets: sass + autoprefixer + pixrem + livereload + sourcemaps (only in dev mode)
+
+/*
+ * STYLES task
+ * sass + autoprefixer + pixrem + livereload + sourcemaps (only in dev mode)
+ */
 gulp.task('styles', function () {
   return sass(pathPrefixer(paths.styles.main, paths.dev), { sourcemap: true, style: 'compressed'})
     .pipe(plumber())
@@ -131,7 +144,35 @@ gulp.task('styles', function () {
     }));
 });
 
-// scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
+
+/*
+ * MODERNIZR task
+ * auto custom build
+ * crawls through source files, gathers up references to Modernizr tests and outputs a lean, mean Modernizr machine…
+ */
+gulp.task('modernizr', function () {
+  gulp.src(pathPrefixer(paths.scripts.files, paths.dev))
+    .pipe(modernizr('custom.modernizr.js', {
+      options: [
+        'setClasses',
+        'addTest',
+        'html5printshiv',
+        'testProp',
+        'fnBind'
+      ]
+    }))
+    .pipe(uglify())
+    .pipe(rename({
+      suffix: ".min"
+    }))
+    .pipe(gulp.dest(paths.dev + paths.scripts.src + 'vendor/'));
+});
+
+
+/*
+ * SCRIPTS task
+ * scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
+ */
 gulp.task('scripts', function () {
   return gulp.src(pathPrefixer(paths.scripts.concat, paths.dev))
     .pipe(plumber())
@@ -158,9 +199,13 @@ gulp.task('scripts', function () {
     }));
 });
 
-// images optimisation
-// dev mode: only changed images (via cache)
-// build mode: only changed images (via SHA comparison)
+
+/*
+ * IMAGES task
+ * images optimisation
+ * dev mode: only changed images (via cache)
+ * build mode: only changed images (via SHA comparison)
+ */
 gulp.task('images', function () {
   return gulp
     .src(pathPrefixer(paths.images.files, paths.dev))
@@ -182,24 +227,34 @@ gulp.task('images', function () {
     }));
 });
 
-// livereload for “static” files (.html, .php, .jade, …)
+
+/*
+ * STATIC task
+ * livereload for “static” files (.html, .php, .jade, …)
+ */
 gulp.task('static', function () {
   livereload.reload();
 });
 
-// livereload is listening to you…
+
+/*
+ * WATCH tasks
+ * livereload is listening to you…
+ */
 gulp.task('watch', function () {
   livereload.listen();
   gulp.watch(pathPrefixer(paths.styles.files, paths.dev), ['styles']);
-  gulp.watch(pathPrefixer(paths.scripts.files, paths.dev), ['scripts']);
+  gulp.watch(pathPrefixer(paths.scripts.files, paths.dev), ['scripts', 'modernizr']);
   gulp.watch(pathPrefixer(paths.images.files, paths.dev), ['images']);
   gulp.watch(pathPrefixer(paths.static.files, paths.dev), ['static']);
 });
 
 
-// BUILD task
+/* ------------------------------------------------------
+ * BUILD task
+ */
 // gulp.task('build', ['init-build', 'copy', 'scripts', 'styles', 'images', 'revision-clean', 'revision-write', 'revision-refs'], function () {
-gulp.task('build', ['init-build', 'copy', 'styles', 'scripts', 'images'], function () {
+gulp.task('build', ['init-build', 'modernizr', 'copy', 'styles', 'scripts', 'images'], function () {
   console.timeEnd('BUILD TIME');
   notifier.notify({
     title: 'Gulp notification',
@@ -213,8 +268,12 @@ gulp.task('init-build', function () {
   console.time('BUILD TIME');
 });
 
-// copy (all) changed files except styles/scripts/images + .htaccess + remove deleted files
-gulp.task('copy', ['init-build'], function () {
+
+/*
+ * COPY task
+ * copy (all) changed files except styles/scripts/images + .htaccess + remove deleted files
+ */
+gulp.task('copy', ['init-build', 'modernizr'], function () {
   return gulp
     .src(pathPrefixer(paths.site, paths.dev))
     .pipe(deleted(paths.dev, paths.build, pathPrefixer(paths.site, paths.dev)))
@@ -242,4 +301,66 @@ gulp.task('rev-clean', ['rev'], function (cb) {
   del([paths.build + paths.styles.dest, paths.build + paths.scripts.dest], cb);
 });
 
-// modif to test submodule usage…
+
+/* ------------------------------------------------------
+ * YEOMAN tasks
+ */
+
+/*
+ * YO task (init)
+ */
+gulp.task('yo', ['bower-jquery', 'bower-sass'], function () {
+  notifier.notify({
+    title: 'Gulp notification',
+    message: 'YO task SUCCESS!'
+  });
+});
+
+/*
+ * BOWER task
+ * Main Yeoman task
+ */
+gulp.task('bower', ['bower-jquery', 'bower-sass'], function () {
+  notifier.notify({
+    title: 'Gulp notification',
+    message: 'BOWER task SUCCESS!'
+  });
+});
+
+gulp.task('bower-jquery', function () {
+  return gulp.src(mainBowerFiles({
+    filter: /jquery/
+  }))
+    .pipe(uglify())
+    .pipe(rename({
+      suffix: ".min"
+    }))
+    .pipe(gulp.dest(paths.dev + paths.scripts.src + 'vendor/'));
+});
+
+gulp.task('bower-sass', function () {
+  // get all main Sass files from bower packages
+  var mainBowerSassFiles = mainBowerFiles({
+    filter: /.\.scss/
+  });
+
+  _.each(mainBowerSassFiles, function (file) {
+    // copy
+    // from: bower_components/**/srcFolder/_[filename].scss
+    // to: dev/styles/vendor/[filename]/…
+    var srcFolder = path.dirname(file),
+      nameFolder = path.basename(file, '.scss').substr(1),
+      destFolder = process.cwd() + '/' + paths.dev + paths.styles.src + 'vendor/' + nameFolder;
+
+    // folder creation
+    fs.mkdir(destFolder, function () {
+      // copy files
+      ncp(srcFolder, destFolder, function (err) {
+        if (err) {
+          return console.error(err);
+        }
+        console.log(nameFolder + ' done!');
+      });
+    });
+  });
+});
