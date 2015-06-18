@@ -1,8 +1,14 @@
-@import 'base/normalize';
-@import 'base/reset';
 @import 'helpers/variables';
 @import 'helpers/mixins';
+
+@import 'vendor/bourbon/bourbon';
+@import 'vendor/neat/neat';
+
+@import 'base/normalize';
+@import 'base/reset';
+
 @import 'layout/global';
+
 @import 'components/rating';
 
 @import 'shame';
