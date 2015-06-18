@@ -151,7 +151,7 @@ gulp.task('styles', function () {
  * crawls through source files, gathers up references to Modernizr tests and outputs a lean, mean Modernizr machine…
  */
 gulp.task('modernizr', function () {
-  gulp.src(pathPrefixer(paths.scripts.files, paths.dev))
+  return gulp.src(pathPrefixer(paths.scripts.files, paths.dev))
     .pipe(modernizr('custom.modernizr.js', {
       options: [
         'setClasses',
@@ -342,15 +342,19 @@ gulp.task('bower-sass', function () {
   // get all main Sass files from bower packages
   var mainBowerSassFiles = mainBowerFiles({
     filter: /.\.scss/
-  });
+  }),
+    vendorFolder = process.cwd() + '/' + paths.dev + paths.styles.src + 'vendor/';
 
+  if (!fs.exists(vendorFolder)) {
+    fs.mkdirSync(vendorFolder);
+  }
   _.each(mainBowerSassFiles, function (file) {
     // copy
     // from: bower_components/**/srcFolder/_[filename].scss
     // to: dev/styles/vendor/[filename]/…
     var srcFolder = path.dirname(file),
       nameFolder = path.basename(file, '.scss').substr(1),
-      destFolder = process.cwd() + '/' + paths.dev + paths.styles.src + 'vendor/' + nameFolder;
+      destFolder = vendorFolder + nameFolder;
 
     // folder creation
     fs.mkdir(destFolder, function () {
