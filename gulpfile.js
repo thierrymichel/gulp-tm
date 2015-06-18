@@ -23,6 +23,7 @@ var pixrem = require('gulp-pixrem');
 var plumber = require('gulp-plumber');
 var rename = require('gulp-rename');
 var rev = require('gulp-rev');
+var revReplace = require('gulp-rev-replace');
 var sass = require('gulp-ruby-sass');
 var sourcemaps = require('gulp-sourcemaps');
 var uglify = require('gulp-uglify');
@@ -69,7 +70,8 @@ var devDir = 'dev/',
   ],
   stylesDir = 'styles/',
   stylesFiles = 'styles/**/*.scss',
-  mainFile = 'main';
+  mainFile = 'main',
+  revFiles = 'index.+(html|php|jade)';
 
 
 /* ------------------------------------------------------
@@ -269,7 +271,7 @@ gulp.task('watch', function () {
  * BUILD task
  */
 // gulp.task('build', ['init-build', 'copy', 'scripts', 'styles', 'images', 'revision-clean', 'revision-write', 'revision-refs'], function () {
-gulp.task('build', ['init-build', 'modernizr', 'copy', 'styles', 'scripts', 'images'], function () {
+gulp.task('build', ['init-build', 'modernizr', 'copy', 'styles', 'scripts', 'images', 'rev', 'rev-replace', 'rev-clean'], function () {
   console.timeEnd('BUILD TIME');
   notifier.notify({
     title: 'Gulp notification',
@@ -309,19 +311,49 @@ gulp.task('copy', ['init-build', 'modernizr'], function () {
 });
 
 
-// revision control for styles and scripts
-gulp.task('rev', function () {
+/*
+ * REV task
+ * revision control for main styles and scripts
+ */
+gulp.task('rev', ['styles', 'scripts'], function () {
+
+  var src = [buildDir + stylesDir + mainFile + '.min.css', buildDir + scriptsDir + mainFile + '.min.js'];
+
   return gulp
-    .src([paths.build + paths.styles.dest, paths.build + paths.scripts.dest], { base: 'htdocs' })
+    .src(src, { base: 'htdocs' })
+    // .pipe(rename(function (path) {
+    //   path.basename = path.basename.replace('.min', '');
+    // }))
     .pipe(rev())
-    .pipe(gulp.dest('htdocs'))
+    .pipe(gulp.dest(buildDir))
     .pipe(rev.manifest())
-    .pipe(gulp.dest('htdocs'));
+    .pipe(gulp.dest(buildDir));
 });
 
+/*
+ * REV-REPLACE
+ * rewrite occurences of main scripts/styles (after revision) 
+ */
+gulp.task('rev-replace', ['rev'], function () {
+
+  var manifest = gulp.src(buildDir + 'rev-manifest.json'),
+    src = buildDir + revFiles;
+
+  return gulp.src(src)
+    .pipe(revReplace({manifest: manifest}))
+    .pipe(gulp.dest(buildDir));
+});
+
+
+
+
 // clean styles and scripts after revision
-gulp.task('rev-clean', ['rev'], function (cb) {
-  del([paths.build + paths.styles.dest, paths.build + paths.scripts.dest], cb);
+gulp.task('rev-clean', ['rev-replace'], function (cb) {
+
+  var src = [buildDir + stylesDir + mainFile + '.min.css', buildDir + scriptsDir + mainFile + '.min.js'];
+  src = src.concat(buildDir + 'rev-manifest.json');
+
+  del(src, cb);
 });
 
 
