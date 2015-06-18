@@ -33,6 +33,7 @@ var fs = require('fs');
 var ncp = require('ncp').ncp;
 var notifier = require('node-notifier');
 var path = require('path');
+var revDel = require('rev-del');
 var _ = require('underscore');
 
 
@@ -53,7 +54,8 @@ var devDir = 'dev/',
     '!styles{,/**}',        // specific task!
     '!scripts/*',           // specific task!
     '!scripts/lib{,/**}',   // specific task!
-    '!images{,/**}'         // specific task!
+    '!images{,/**}',        // specific task!
+    '!rev-manifest.json'    // specific task!
   ],
   staticFiles = '**/*.+(html|php|jade)',
   imagesDir = 'images/',
@@ -327,6 +329,7 @@ gulp.task('rev', ['styles', 'scripts'], function () {
     .pipe(rev())
     .pipe(gulp.dest(buildDir))
     .pipe(rev.manifest())
+    .pipe(revDel({ dest: 'htdocs' }))
     .pipe(gulp.dest(buildDir));
 });
 
@@ -351,7 +354,6 @@ gulp.task('rev-replace', ['rev'], function () {
 gulp.task('rev-clean', ['rev-replace'], function (cb) {
 
   var src = [buildDir + stylesDir + mainFile + '.min.css', buildDir + scriptsDir + mainFile + '.min.js'];
-  src = src.concat(buildDir + 'rev-manifest.json');
 
   del(src, cb);
 });
