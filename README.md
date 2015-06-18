@@ -1,9 +1,10 @@
-# A web workflow with Gulp
+# A frontend workflow with Gulp
 
-__Dev__ task (default) including : 
+__Dev__ task (default) including: 
 
-+ styles (sass, autoprefixer, pixrem, sourcemaps)
-+ scripts (concat, uglify, sourcemaps)
++ styles (sass, autoprefixer and pixrem with sourcemaps)
++ scripts (concat and uglify with sourcemaps)
++ images (optimization)
 + watch
 + livereload
 
@@ -11,17 +12,22 @@ __Dev__ task (default) including :
 $ gulp
 ```
 
-__Build__ process including :
+__Build__ process including:
 
-+ styles (with no sourcemaps)
-+ scripts (with no sourcemaps)
-+ images (imagemin)
++ styles (no sourcemaps)
++ scripts (no sourcemaps)
++ images (optimization)
 + copy (copy modified files and remove deleted files)
-+ revision (for main stylesheet and scripts file) [coming soon]
++ revision (for main stylesheet and scripts file)
 
 ```
 $ gulp build
 ```
+
+## To-do list
+
++ Add revision for images
++ Add HTML minifcation
 
 ## Contributing
 
