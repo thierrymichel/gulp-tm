@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, regexp: true */
+/*jslint indent: 2, nomen: true, node: true, regexp: true */
 'use strict';
 
 
@@ -81,7 +81,7 @@ var devDir = 'dev/',
  */
 
 // Path(s) concatenation: @base (string) + @path (string or array)
-function pathPrefixer(path, base) {
+function pathConcat(path, base) {
   // preserve !negation for excluded files
   var re = /^(.+)(!)(.+)$/;
   if (typeof path === 'string') {
@@ -98,7 +98,8 @@ function pathPrefixer(path, base) {
 /*
  * DEFAULT task -> DEV
  */
-gulp.task('default', ['styles', 'modernizr', 'scripts', 'watch'], function () {
+gulp.task('default', ['dev']);
+gulp.task('dev', ['styles', 'modernizr', 'scripts', 'watch'], function () {
   console.log('gulp default');
   notifier.notify({
     title: 'Gulp notification',
@@ -150,7 +151,7 @@ gulp.task('styles', function () {
  */
 gulp.task('modernizr', function () {
 
-  var src = pathPrefixer(scriptsFiles, devDir);
+  var src = pathConcat(scriptsFiles, devDir);
 
   return gulp.src(src)
     .pipe(modernizr('custom.modernizr.js', {
@@ -188,7 +189,7 @@ gulp.task('scripts', function () {
 
   var srcMain = scriptsDir + mainFile + '.js',
     srcConcat = scriptsConcat.concat(srcMain),
-    src = pathPrefixer(srcConcat, devDir);
+    src = pathConcat(srcConcat, devDir);
 
   return gulp.src(src)
     .pipe(plumber())
@@ -262,10 +263,10 @@ gulp.task('static', function () {
  */
 gulp.task('watch', function () {
   livereload.listen();
-  gulp.watch(pathPrefixer(stylesFiles, devDir), ['styles']);
-  gulp.watch(pathPrefixer(scriptsFiles, devDir), ['scripts', 'modernizr']);
-  gulp.watch(pathPrefixer(imagesFiles, devDir), ['images']);
-  gulp.watch(pathPrefixer(staticFiles, devDir), ['static']);
+  gulp.watch(pathConcat(stylesFiles, devDir), ['styles']);
+  gulp.watch(pathConcat(scriptsFiles, devDir), ['scripts', 'modernizr']);
+  gulp.watch(pathConcat(imagesFiles, devDir), ['images']);
+  gulp.watch(pathConcat(staticFiles, devDir), ['static']);
 });
 
 
@@ -298,11 +299,11 @@ gulp.task('init-build', function () {
  */
 gulp.task('copy', ['init-build'], function () {
 
-  var src = pathPrefixer(siteFiles, devDir);
+  var src = pathConcat(siteFiles, devDir);
 
   return gulp
     .src(src)
-    .pipe(deleted(devDir, buildDir, pathPrefixer(siteFiles, devDir)))
+    .pipe(deleted(devDir, buildDir, pathConcat(siteFiles, devDir)))
     .pipe(changed(buildDir, {hasChanged: changed.compareSha1Digest}))
     .pipe(gulp.dest(buildDir))
     .pipe(notify({
@@ -323,15 +324,13 @@ gulp.task('rev', ['styles', 'scripts'], function () {
 
   return gulp
     .src(src, { base: 'htdocs' })
-    // .pipe(rename(function (path) {
-    //   path.basename = path.basename.replace('.min', '');
-    // }))
     .pipe(rev())
     .pipe(gulp.dest(buildDir))
     .pipe(rev.manifest())
     .pipe(revDel({ dest: 'htdocs' }))
     .pipe(gulp.dest(buildDir));
 });
+
 
 /*
  * REV-REPLACE
@@ -348,9 +347,10 @@ gulp.task('rev-replace', ['rev'], function () {
 });
 
 
-
-
-// clean styles and scripts after revision
+/*
+ * REV-CLEAN
+ * delete main styles and scripts files after revision
+ */
 gulp.task('rev-clean', ['rev-replace'], function (cb) {
 
   var src = [buildDir + stylesDir + mainFile + '.min.css', buildDir + scriptsDir + mainFile + '.min.js'];
