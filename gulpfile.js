@@ -134,12 +134,48 @@ gulp.task('styles', function () {
     .pipe(gulpif(
       env === 'dev',
       gulp.dest(devDir + stylesDir),
-      gulp.dest(buildDir + stylesDir)
+      gulp.dest(tmpDir + stylesDir)
     ))
     .pipe(livereload())
     .pipe(notify({
       onLast: true,
       message: 'STYLES task SUCCESS!',
+      icon: null
+    }));
+});
+
+
+/*
+ * SCRIPTS task
+ * scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
+ */
+gulp.task('scripts', function () {
+
+  var srcMain = scriptsDir + mainFile + '.js',
+    srcConcat = scriptsConcat.concat(srcMain),
+    src = pathConcat(srcConcat, devDir);
+
+  return gulp.src(src)
+    .pipe(plumber())
+    .pipe(sourcemaps.init())
+    .pipe(concat('main.js'))
+    .pipe(uglify())
+    .pipe(rename({
+      suffix: ".min"
+    }))
+    .pipe(gulpif(
+      env === 'dev',
+      sourcemaps.write('./')
+    ))
+    .pipe(gulpif(
+      env === 'dev',
+      gulp.dest(devDir + scriptsDir),
+      gulp.dest(tmpDir + scriptsDir)
+    ))
+    .pipe(livereload())
+    .pipe(notify({
+      onLast: true,
+      message: 'SCRIPTS task SUCCESS!',
       icon: null
     }));
 });
@@ -183,42 +219,6 @@ gulp.task('modernizr', function () {
 
 
 /*
- * SCRIPTS task
- * scripts: concat + uglify + livereload + sourcemaps (only in dev mode)
- */
-gulp.task('scripts', function () {
-
-  var srcMain = scriptsDir + mainFile + '.js',
-    srcConcat = scriptsConcat.concat(srcMain),
-    src = pathConcat(srcConcat, devDir);
-
-  return gulp.src(src)
-    .pipe(plumber())
-    .pipe(sourcemaps.init())
-    .pipe(concat('main.js'))
-    .pipe(uglify())
-    .pipe(rename({
-      suffix: ".min"
-    }))
-    .pipe(gulpif(
-      env === 'dev',
-      sourcemaps.write('./')
-    ))
-    .pipe(gulpif(
-      env === 'dev',
-      gulp.dest(devDir + scriptsDir),
-      gulp.dest(buildDir + scriptsDir)
-    ))
-    .pipe(livereload())
-    .pipe(notify({
-      onLast: true,
-      message: 'SCRIPTS task SUCCESS!',
-      icon: null
-    }));
-});
-
-
-/*
  * IMAGES task
  * images optimisation
  * dev mode: only changed images (via cache)
@@ -244,6 +244,7 @@ gulp.task('images', function () {
       gulp.dest(devDir),
       gulp.dest(tmpDir)
     ))
+    .pipe(livereload())
     .pipe(notify({
       onLast: true,
       message: 'IMAGES task SUCCESS!',
@@ -278,7 +279,7 @@ gulp.task('watch', function () {
  * BUILD task
  */
 // gulp.task('build', ['init-build', 'copy', 'scripts', 'styles', 'images', 'revision-clean', 'revision-write', 'revision-refs'], function () {
-gulp.task('build', ['init-build', 'copy', 'modernizr', 'styles', 'scripts', 'images', 'rev', 'rev-replace', 'rev-clean'], function () {
+gulp.task('build', ['init-build', 'copy', 'modernizr', 'styles', 'scripts', 'images', 'rev', 'rev-replace'], function () {
   console.timeEnd('BUILD TIME');
   notifier.notify({
     title: 'Gulp notification',
@@ -307,7 +308,7 @@ gulp.task('copy', ['init-build'], function () {
 
   return gulp
     .src(src)
-    .pipe(deleted(devDir, buildDir, pathConcat(siteFiles, devDir)))
+    .pipe(deleted(buildDir, siteFiles, devDir))
     .pipe(changed(buildDir, {hasChanged: changed.compareSha1Digest}))
     .pipe(gulp.dest(buildDir))
     .pipe(notify({
@@ -322,22 +323,26 @@ gulp.task('copy', ['init-build'], function () {
  * REV task
  * revision control for main styles and scripts
  */
-// gulp.task('rev', ['copy', 'images', 'styles', 'scripts'], function () {
-gulp.task('rev', ['images'], function () {
+gulp.task('rev', ['copy', 'images', 'styles', 'scripts'], function () {
 
   var src = [
-      // buildDir + stylesDir + mainFile + '.min.css',
-      // buildDir + scriptsDir + mainFile + '.min.js',
-      tmpDir + imagesFiles
-    ];
+    tmpDir + stylesDir + mainFile + '.min.css',
+    tmpDir + scriptsDir + mainFile + '.min.js',
+    tmpDir + imagesFiles
+  ];
 
   return gulp
     .src(src, { base: tmpDir })
     .pipe(rev())
     .pipe(gulp.dest(buildDir))
     .pipe(rev.manifest())
-    // .pipe(revDel({ dest: buildDir }))
-    .pipe(gulp.dest(buildDir));
+    .pipe(revDel({ dest: buildDir, oldManifest: 'rev-manifest.json' }))
+    .pipe(gulp.dest(process.cwd()))
+    .pipe(notify({
+      onLast: true,
+      message: 'REV task SUCCESS!',
+      icon: null
+    }));
 });
 
 
@@ -347,7 +352,7 @@ gulp.task('rev', ['images'], function () {
  */
 gulp.task('rev-replace', ['rev'], function () {
 
-  var manifest = gulp.src(buildDir + 'rev-manifest.json'),
+  var manifest = gulp.src('rev-manifest.json'),
     src = [
       buildDir + stylesDir + '*.css',
       buildDir + scriptsDir + '*.js',
@@ -364,7 +369,7 @@ gulp.task('rev-replace', ['rev'], function () {
 
 
 /*
- * REV-CLEAN
+ * REV-CLEAN // obsolete ???
  * delete main styles and scripts files after revision
  */
 gulp.task('rev-clean', ['rev-replace'], function (cb) {
@@ -454,22 +459,4 @@ gulp.task('bower-sass', function () {
       });
     });
   });
-});
-
-
-
-/* ------------------------------------------------------
- * TO DELETE
- */
-gulp.task('del', function () {
-  var src = devDir + imagesFiles;
-  // var src = pathConcat(siteFiles, devDir);
-
-  return gulp
-    .src(src, { base: devDir })
-    .pipe(deleted(tmpDir, imagesFiles, devDir));
-    // .pipe(deleted(buildDir, siteFiles, devDir));
-    // .pipe(deleted(devDir, tmpDir, devDir + imagesFiles));
-
-  // console.log(gulp.src(src, { base: devDir }));
 });
