@@ -8,7 +8,7 @@
 
 var gulp = require('gulp');
 var autoprefixer = require('gulp-autoprefixer');
-var cache = require('gulp-cached');
+var cached = require('gulp-cached');
 var changed = require('gulp-changed');
 var concat = require('gulp-concat');
 var deleted = require('gulp-deleted');
@@ -30,6 +30,7 @@ var uglify = require('gulp-uglify');
 
 var del = require('del');
 var fs = require('fs');
+var lazypipe = require('lazypipe');
 var ncp = require('ncp').ncp;
 var notifier = require('node-notifier');
 var path = require('path');
@@ -41,13 +42,13 @@ var _ = require('underscore');
  * Settings
  */
 
-var config = {
-  env: 'dev' // vs 'build'
-};
+var env = process.env.NODE_ENV || 'dev';
+// test with build env : $ NODE_ENV=build gulp [taskname]
 
 // src, dest, directories, files, paths, globs, …
 var devDir = 'dev/',
   buildDir = 'htdocs/',
+  tmpDir = '.tmp/',
   siteFiles = [
     '**/*',
     '.htaccess',
@@ -73,7 +74,7 @@ var devDir = 'dev/',
   stylesDir = 'styles/',
   stylesFiles = 'styles/**/*.scss',
   mainFile = 'main',
-  revFiles = 'index.+(html|php|jade)';
+  revFiles = '**/*.+(html|php|jade)';
 
 
 /* ------------------------------------------------------
@@ -127,11 +128,11 @@ gulp.task('styles', function () {
       suffix: ".min"
     }))
     .pipe(gulpif(
-      config.env === 'dev',
+      env === 'dev',
       sourcemaps.write('./')
     ))
     .pipe(gulpif(
-      config.env === 'dev',
+      env === 'dev',
       gulp.dest(devDir + stylesDir),
       gulp.dest(buildDir + stylesDir)
     ))
@@ -168,7 +169,7 @@ gulp.task('modernizr', function () {
       suffix: ".min"
     }))
     .pipe(gulpif(
-      config.env === 'dev',
+      env === 'dev',
       gulp.dest(devDir + scriptsDir + 'vendor/'),
       gulp.dest(buildDir + scriptsDir + 'vendor/')
     ))
@@ -200,11 +201,11 @@ gulp.task('scripts', function () {
       suffix: ".min"
     }))
     .pipe(gulpif(
-      config.env === 'dev',
+      env === 'dev',
       sourcemaps.write('./')
     ))
     .pipe(gulpif(
-      config.env === 'dev',
+      env === 'dev',
       gulp.dest(devDir + scriptsDir),
       gulp.dest(buildDir + scriptsDir)
     ))
@@ -225,20 +226,23 @@ gulp.task('scripts', function () {
  */
 gulp.task('images', function () {
 
-  var src = devDir + imagesFiles;
+  var src = devDir + imagesFiles,
+    tmpImg = lazypipe()
+      .pipe(deleted, tmpDir, imagesFiles, devDir)
+      .pipe(changed, tmpDir, { hasChanged: changed.compareSha1Digest });
 
   return gulp
-    .src(src)
+    .src(src, { base: devDir })
     .pipe(gulpif(
-      config.env === 'dev',
-      cache('images'),
-      changed(buildDir + imagesDir, {hasChanged: changed.compareSha1Digest})
+      env === 'dev',
+      cached('images'),
+      tmpImg()
     ))
     .pipe(imagemin())
     .pipe(gulpif(
-      config.env === 'dev',
-      gulp.dest(devDir + imagesDir),
-      gulp.dest(buildDir + imagesDir)
+      env === 'dev',
+      gulp.dest(devDir),
+      gulp.dest(tmpDir)
     ))
     .pipe(notify({
       onLast: true,
@@ -288,7 +292,7 @@ gulp.task('build', ['init-build', 'copy', 'modernizr', 'styles', 'scripts', 'ima
  * set build config
  */
 gulp.task('init-build', function () {
-  config.env = 'build';
+  env = 'build';
   console.time('BUILD TIME');
 });
 
@@ -318,16 +322,21 @@ gulp.task('copy', ['init-build'], function () {
  * REV task
  * revision control for main styles and scripts
  */
-gulp.task('rev', ['styles', 'scripts'], function () {
+// gulp.task('rev', ['copy', 'images', 'styles', 'scripts'], function () {
+gulp.task('rev', ['images'], function () {
 
-  var src = [buildDir + stylesDir + mainFile + '.min.css', buildDir + scriptsDir + mainFile + '.min.js'];
+  var src = [
+      // buildDir + stylesDir + mainFile + '.min.css',
+      // buildDir + scriptsDir + mainFile + '.min.js',
+      tmpDir + imagesFiles
+    ];
 
   return gulp
-    .src(src, { base: 'htdocs' })
+    .src(src, { base: tmpDir })
     .pipe(rev())
     .pipe(gulp.dest(buildDir))
     .pipe(rev.manifest())
-    .pipe(revDel({ dest: 'htdocs' }))
+    // .pipe(revDel({ dest: buildDir }))
     .pipe(gulp.dest(buildDir));
 });
 
@@ -339,10 +348,17 @@ gulp.task('rev', ['styles', 'scripts'], function () {
 gulp.task('rev-replace', ['rev'], function () {
 
   var manifest = gulp.src(buildDir + 'rev-manifest.json'),
-    src = buildDir + revFiles;
+    src = [
+      buildDir + stylesDir + '*.css',
+      buildDir + scriptsDir + '*.js',
+      buildDir + revFiles
+    ];
 
-  return gulp.src(src)
-    .pipe(revReplace({manifest: manifest}))
+  return gulp.src(src, { base: buildDir })
+    .pipe(revReplace({
+      manifest: manifest,
+      replaceInExtensions: ['.js', '.css', '.html', '.php', '.jade', '.hbs']
+    }))
     .pipe(gulp.dest(buildDir));
 });
 
@@ -372,6 +388,7 @@ gulp.task('init', ['bower-jquery', 'bower-sass'], function () {
     message: 'INIT task SUCCESS!'
   });
 });
+
 
 /*
  * BOWER task
@@ -437,4 +454,22 @@ gulp.task('bower-sass', function () {
       });
     });
   });
+});
+
+
+
+/* ------------------------------------------------------
+ * TO DELETE
+ */
+gulp.task('del', function () {
+  var src = devDir + imagesFiles;
+  // var src = pathConcat(siteFiles, devDir);
+
+  return gulp
+    .src(src, { base: devDir })
+    .pipe(deleted(tmpDir, imagesFiles, devDir));
+    // .pipe(deleted(buildDir, siteFiles, devDir));
+    // .pipe(deleted(devDir, tmpDir, devDir + imagesFiles));
+
+  // console.log(gulp.src(src, { base: devDir }));
 });
