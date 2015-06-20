@@ -18,7 +18,7 @@ __Build__ process including:
 + scripts (no sourcemaps)
 + images (optimization)
 + copy (copy modified files and remove deleted files)
-+ revision (for main stylesheet and scripts file)
++ revision (for main stylesheet/scripts and images files)
 
 ```
 $ gulp build
@@ -26,7 +26,6 @@ $ gulp build
 
 ## To-do list
 
-+ Add revision for images
 + Add HTML minifcation
 
 -----
